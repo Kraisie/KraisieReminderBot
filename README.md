@@ -25,6 +25,7 @@ cd folderWithZipCpontent
 Afterwards you can also detach the process from the terminal. To do that start the bot with one of the ways above and press `ctrl+z`. You can now type commands in the terminal again.
 Type in `bg` and afterwards `disown`. A message like `bash: warning: deleting stopped job 1 with process group 6807` will appear. The number at the end is the PID. To end the process later type in `kill PID` while the PID is the number from before. If you do not know the PID anymore you can always get it using `ps`. It will be one of the java processes in the list. You can also end all gradle processes using `./gradlew --stop`.
 
+If you are using tmux you can open `tmux` via commandline on your server. Start the bot like above, press `ctrl+z` and afterwards `ctrl+b` followed by `d`. You can now log out of the ssh session without the disowned bot getting terminated.
 ##### Windows
 Just download the repository as a `.zip` file and extract it.
 You can either create a new `Bot.txt` file that contains your bot token and the bot name or let it create by the program on startup. The `.txt` is as simple as:
