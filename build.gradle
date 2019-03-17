@@ -1,0 +1,38 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'eclipse'
+    id 'application'
+}
+
+group 'Kraisie'
+version '0.1'
+
+sourceCompatibility = 1.8
+
+repositories {
+    jcenter()
+    mavenCentral()
+}
+
+dependencies {
+    compile "org.telegram:telegrambots:4.1.2"
+    compile group: 'com.google.code.gson', name: 'gson', version: '2.8.5'
+}
+
+mainClassName = 'Main'
+
+run{
+    standardInput = System.in
+}
+
+task fatJar(type: Jar) {
+    manifest {
+        attributes 'Implementation-Title': 'KraisieReminderBot',
+                'Implementation-Version': version,
+                'Main-Class': 'Main'
+    }
+    baseName = project.name + '-release'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
