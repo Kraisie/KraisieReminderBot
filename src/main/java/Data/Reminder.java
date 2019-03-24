@@ -2,7 +2,6 @@ package Data;
 
 import com.google.gson.Gson;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,6 +41,14 @@ public class Reminder {
 	}
 
 	public static void writeData(List<Reminder> allEntries, Path filePath) {
+		if(!filePath.toFile().exists()) {
+			if(filePath.toFile().getParentFile() != null) {
+				filePath.toFile().getParentFile().mkdirs();
+			} else {
+				filePath.toFile().mkdir();
+			}
+		}
+
 		Gson gson = new Gson();
 		String json = gson.toJson(allEntries);
 

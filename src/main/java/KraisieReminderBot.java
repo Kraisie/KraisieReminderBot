@@ -25,6 +25,7 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 	 * 	U+26A0	= warning
 	 *	U+2705 	= green check mark
 	 * 	U+2709	= memo
+	 *  U+270F  = pencil
 	 * 	U+2753	= red ?
 	 * 	U+27A1 	= right_arrow
 	 */
@@ -67,6 +68,9 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 			case "/reminder":
 				setNewReminder(update);
 				break;
+			case "/edit":
+				editReminder(update);
+				break;
 			case "/list":
 				listAllReminders(update);
 				break;
@@ -102,6 +106,7 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 		String response = "\u2139 */help* - Show the help message (which you found already)\n" +
 				"\u23F0 */reminder <message>* - Create a new reminder\n" +
 				"\u2709 */list* - List all saved reminders\n" +
+				"\u270F */edit <number> <message>* - Replace the text of the reminder with that number on the list with a new text\n" +
 				"\u26A0 */delete <number>* - Delete the reminder with that number on the list\n" +
 				"\u2049 */yesorno* - Get a random yes or no";
 
@@ -126,12 +131,36 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 				+ update.getMessage().getChatId()
 				+ ".json"
 		);
-		String message = update.getMessage().getText().replaceFirst("/reminder", "");
+		String message = update.getMessage().getText().replaceFirst("/reminder ", "");
 
 		List<Reminder> allReminder = Reminder.readData(reminderFile);
 		Reminder reminder = new Reminder(LocalDateTime.now(), message);
 		allReminder.add(reminder);
 		Reminder.writeData(allReminder, reminderFile);
+	}
+
+	private void editReminder(Update update) {
+		long chatID = update.getMessage().getChatId();
+		List<Reminder> allReminder = getReminders(update);
+		if (allReminder == null) {
+			return;
+		}
+
+		int index;
+		String message = update.getMessage().getText().replaceFirst("/edit ", "");
+		try {
+			index = Integer.valueOf(message.split(" ")[0]);
+			message = message.replaceFirst(index + " ", "");
+		} catch (NumberFormatException e) {
+			String response = "*Invalid number!* Please select a number between 1 and "
+					+ allReminder.size() + ".";
+			sendAnswer(chatID, response, true);
+			return;
+		}
+
+		allReminder.get(index - 1).setMessage(message);
+		Reminder.writeData(allReminder, Paths.get("reminder_data/" + update.getMessage().getChatId() + ".json"));
+		sendAnswer(chatID, "*Reminder edited!*", true);
 	}
 
 	private void listAllReminders(Update update) {
