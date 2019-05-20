@@ -14,12 +14,12 @@ nameOfTheBot
 ##### Linux
 If you created the `Bot.txt` file already you can now start the bot using:
 ```cmd
-cd folderWithZipCpontent
+cd folderWithZipContent
 ./gradlew run
 ```
 To suppress all outputs use the following command (do **NOT** use that if your `Bot.txt` is not created/has no content yet as the program asks for these if not found):
 ```cmd
-cd folderWithZipCpontent
+cd folderWithZipContent
 ./gradlew run -q > /dev/null 2>&1
 ```
 Afterwards you can also detach the process from the terminal. To do that start the bot with one of the ways above and press `ctrl+z`. You can now type commands in the terminal again.
@@ -36,14 +36,14 @@ You can either create a new `Bot.txt` file that contains your bot token and the 
 123456789:abcdefghijklmnopqrstuvwxyzabcdefgh
 nameOfTheBot
 ```
-Wether or not you created the `Bot.txt` file you can now start the bot using:
+If you created the `Bot.txt` file already you can now start the bot using:
 ```cmd
-cd folderWithZipCpontent
+cd folderWithZipContent
 ./gradlew run
 ```
 To suppress all outputs use the following command (do **NOT** use that if your `Bot.txt` is not created/has no content yet as the program asks for these if not found):
 ```cmd
-cd folderWithZipCpontent
+cd folderWithZipContent
 ./gradlew run 2> nul
 ```
 Unfortunately you can not detach the process from the terminal on windows as easily as on Linux so to do that you would need to find a way by yourself.
