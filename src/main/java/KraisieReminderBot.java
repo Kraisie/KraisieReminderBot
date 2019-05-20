@@ -1,3 +1,4 @@
+import Data.Message;
 import Data.Reminder;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -28,6 +29,7 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 	 *  U+270F  = pencil
 	 * 	U+2753	= red ?
 	 * 	U+27A1 	= right_arrow
+	 *  U+2795  = plus sign
 	 */
 
 	private String token;
@@ -54,36 +56,99 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 	@Override
 	public void onUpdateReceived(Update update) {
 		if (update.getEditedMessage() != null) {
-			// edits are not supported
+			// edited messages are not supported
 			return;
 		}
 
-		String message = update.getMessage().getText().toLowerCase();
-		String command = message.split(" ")[0];
-
-		switch(command) {
+		long chatID = update.getMessage().getChatId();
+		Message message = tokenizeMessage(update);
+		switch (message.getCommand()) {
 			case "/help":
-				showHelp(update);
+				showHelp(chatID);
 				break;
 			case "/reminder":
-				setNewReminder(update);
+				setNewReminder(chatID, message.getMessage());
 				break;
 			case "/edit":
-				editReminder(update);
+				editReminder(chatID, message.getIndex(), message.getMessage());
+				break;
+			case "/add":
+				addReminder(chatID, message.getIndex(), message.getMessage());
 				break;
 			case "/list":
-				listAllReminders(update);
+				listAllReminders(chatID);
 				break;
 			case "/search":
-				searchReminder(update);
+				searchReminder(chatID, message.getMessage());
 				break;
 			case "/delete":
-				deleteReminder(update);
+				deleteReminder(chatID, message.getIndex());
 				break;
 			case "/yesorno":
-				yesOrNo(update);
+				yesOrNo(chatID);
 				break;
+			default:
+				unknownCommand(chatID);
 		}
+	}
+
+	private Message tokenizeMessage(Update update) {
+		Message message = new Message();
+		String text = update.getMessage().getText();
+		String[] commands = {"/help", "/reminder", "/edit", "/add", "/list", "/search", "/delete", "/yesorno"};
+
+		// get command
+		for (String command : commands) {
+			if(!text.toLowerCase().startsWith(command.toLowerCase())) {
+				continue;
+			}
+			message.setCommand(command);
+			text = text.substring(command.length());
+			break;
+		}
+
+		if (text.isEmpty()) {
+			return message;
+		}
+
+		// remove all spaces before the index or message
+		while(text.charAt(0) == ' ') {
+			if (text.length() > 1) {
+				text = text.substring(1);
+				continue;
+			}
+			break;
+		}
+
+		// get index if given except when it is a new reminder/search as those may start with numbers which are not the index
+		if (!message.getCommand().equals("/reminder") && !message.getCommand().equals("/search")) {
+			StringBuilder sbIndex = new StringBuilder();
+			while (Character.isDigit(text.charAt(0))) {
+				sbIndex.append(text.charAt(0));
+
+				if (text.length() > 1) {
+					text = text.substring(1);
+					continue;
+				}
+				break;
+			}
+
+			if (sbIndex.toString().length() != 0) {
+				message.setIndex(Integer.valueOf(sbIndex.toString()));
+			}
+		}
+
+		// remove all spaces before the message
+		while(text.charAt(0) == ' ') {
+			if (text.length() > 1) {
+				text = text.substring(1);
+				continue;
+			}
+			return message;
+		}
+
+		message.setMessage(text);
+		return message;
 	}
 
 	private void readBotParameters() {
@@ -100,38 +165,33 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 		}
 	}
 
-	private void showHelp(Update update) {
-		SendMessage answer = new SendMessage();
-		answer.setChatId(update.getMessage().getChatId());
+	private void showHelp(long chatID) {
 		String response = "\u2139 */help* - Show the help message (which you found already)\n" +
 				"\u23F0 */reminder <message>* - Create a new reminder\n" +
 				"\u2709 */list* - List all saved reminders\n" +
 				"\u270F */edit <number> <message>* - Replace the text of the reminder with that number on the list with a new text\n" +
+				"\u2795 */add <number> <message>* - Add text to the end of the reminder - start with //s to add a space at the beginning\n" +
 				"\u26A0 */delete <number>* - Delete the reminder with that number on the list\n" +
 				"\u2049 */yesorno* - Get a random yes or no";
 
-		sendAnswer(update.getMessage().getChatId(), response, true);
+		sendAnswer(chatID, response, true);
 	}
 
 	/*
 	 * 	the reminder file only got the chat id as name option as there might be groups that organize
 	 * 	their reminders/deadlines/whatever as teams. chatID_senderID.json would prevent that.
 	 */
-
-	private void setNewReminder(Update update) {
-		updateReminder(update);
-
-		String response = "Hey " + update.getMessage().getFrom().getUserName() + ", I've saved your reminder.";
-		sendAnswer(update.getMessage().getChatId(), response, false);
+	private void setNewReminder(long chatID, String message) {
+		updateReminder(chatID, message);
+		sendAnswer(chatID, "*Reminder saved!*", true);
 	}
 
-	private void updateReminder(Update update) {
+	private void updateReminder(long chatID, String message) {
 		Path reminderFile = Paths.get(
 				"reminder_data/"
-				+ update.getMessage().getChatId()
-				+ ".json"
+						+ chatID
+						+ ".json"
 		);
-		String message = update.getMessage().getText().replaceFirst("/reminder ", "");
 
 		List<Reminder> allReminder = Reminder.readData(reminderFile);
 		Reminder reminder = new Reminder(LocalDateTime.now(), message);
@@ -139,32 +199,49 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 		Reminder.writeData(allReminder, reminderFile);
 	}
 
-	private void editReminder(Update update) {
-		long chatID = update.getMessage().getChatId();
-		List<Reminder> allReminder = getReminders(update);
+	private void editReminder(long chatID, int index, String message) {
+		List<Reminder> allReminder = getReminders(chatID);
 		if (allReminder == null) {
 			return;
 		}
 
-		int index;
-		String message = update.getMessage().getText().replaceFirst("/edit ", "");
-		try {
-			index = Integer.valueOf(message.split(" ")[0]);
-			message = message.replaceFirst(index + " ", "");
-		} catch (NumberFormatException e) {
-			String response = "*Invalid number!* Please select a number between 1 and "
-					+ allReminder.size() + ".";
+		if (index == -1 || index > allReminder.size()) {
+			String response = "*Invalid number!* Please select a number between 1 and " + allReminder.size() + ".";
 			sendAnswer(chatID, response, true);
 			return;
 		}
 
 		allReminder.get(index - 1).setMessage(message);
-		Reminder.writeData(allReminder, Paths.get("reminder_data/" + update.getMessage().getChatId() + ".json"));
+		Reminder.writeData(allReminder, Paths.get("reminder_data/" + chatID + ".json"));
 		sendAnswer(chatID, "*Reminder edited!*", true);
 	}
 
-	private void listAllReminders(Update update) {
-		List<Reminder> allReminder = getReminders(update);
+	private void addReminder(long chatID, int index, String message) {
+		List<Reminder> allReminder = getReminders(chatID);
+		if (allReminder == null) {
+			return;
+		}
+
+		if (index == -1 || index > allReminder.size()) {
+			String response = "*Invalid number!* Please select a number between 1 and " + allReminder.size() + ".";
+			sendAnswer(chatID, response, true);
+			return;
+		}
+
+		String newMessage;
+		if(message.startsWith("//s")) {
+			newMessage = allReminder.get(index - 1).getMessage() + message.replaceFirst("//s", " ");
+		} else {
+			newMessage = allReminder.get(index - 1).getMessage() + message;
+		}
+
+		allReminder.get(index - 1).setMessage(newMessage);
+		Reminder.writeData(allReminder, Paths.get("reminder_data/" + chatID + ".json"));
+		sendAnswer(chatID, "*Added text to the reminder!*", true);
+	}
+
+	private void listAllReminders(long chatID) {
+		List<Reminder> allReminder = getReminders(chatID);
 		if (allReminder == null) {
 			return;
 		}
@@ -177,87 +254,81 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 					.append("_").append(reminder.getMessage()).append("_\n\n");
 		}
 
-		sendAnswer(update.getMessage().getChatId(), strBuilder.toString(), true);
+		sendAnswer(chatID, strBuilder.toString(), true);
 	}
 
-	private void searchReminder(Update update) {
-		List<Reminder> allReminder = getReminders(update);
+	private void searchReminder(long chatID, String searchText) {
+		List<Reminder> allReminder = getReminders(chatID);
 		if (allReminder == null) {
 			return;
 		}
 
-		String searchText = update.getMessage().getText().replaceAll("/search ", "").toLowerCase();
 		DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("dd.MM.yyyy, HH:mm");
-		StringBuilder strBuilder = new StringBuilder("Found these matching reminders:\n\n");
+		StringBuilder strBuilder = new StringBuilder();
+		boolean found = false;
 		for (Reminder reminder : allReminder) {
 			if (!reminder.getMessage().toLowerCase().contains(searchText)) {
 				continue;
 			}
 
+			found = true;
 			strBuilder.append("*[").append(allReminder.indexOf(reminder) + 1).append(" - ")
 					.append(reminder.getCreation().format(dateFormat)).append("]*\n")
 					.append("_").append(reminder.getMessage()).append("_\n\n");
 		}
 
-		sendAnswer(update.getMessage().getChatId(), strBuilder.toString(), true);
+		if (found) {
+			strBuilder.insert(0, "Found these matching reminders:\n\n");
+		} else {
+			strBuilder.append("*No matching reminder found!*");
+		}
+
+		sendAnswer(chatID, strBuilder.toString(), true);
 	}
 
-	private void deleteReminder(Update update) {
-		List<Reminder> allReminder = getReminders(update);
+	private void deleteReminder(long chatID, int index) {
+		List<Reminder> allReminder = getReminders(chatID);
 		if (allReminder == null) {
 			return;
 		}
 
-		int index;
-		long chatID = update.getMessage().getChatId();
-		String message = update.getMessage().getText().replaceFirst("\\s", "");
-		try {
-			index = Integer.valueOf(message.replace("/delete", "")) - 1;
-		} catch (NumberFormatException e) {
-			String response = "*Invalid number!* Please select a number between 1 and "
-					+ allReminder.size() + ".";
+		if (index == -1 || index > allReminder.size()) {
+			String response = "*Invalid number!* Please select a number between 1 and " + allReminder.size() + ".";
 			sendAnswer(chatID, response, true);
 			return;
 		}
 
-		if (index < 0 || index >= allReminder.size()) {
-			String response = "*Number not in range!* Please select a number between 1 and "
-					+ allReminder.size() + ".";
-			sendAnswer(chatID, response, true);
-			return;
-		}
-
-		allReminder.remove(index);
-		Reminder.writeData(allReminder, Paths.get("reminder_data/" + update.getMessage().getChatId() + ".json"));
+		allReminder.remove(index - 1);
+		Reminder.writeData(allReminder, Paths.get("reminder_data/" + chatID + ".json"));
 		sendAnswer(chatID, "*Reminder removed!*", true);
 	}
 
-	private List<Reminder> getReminders(Update update) {
-		Path reminderFile = Paths.get("reminder_data/" + update.getMessage().getChatId() + ".json");
+	private List<Reminder> getReminders(long chatID) {
+		Path reminderFile = Paths.get("reminder_data/" + chatID + ".json");
 		List<Reminder> allReminder = Reminder.readData(reminderFile);
 
 		if (allReminder.isEmpty()) {
-			sendAnswer(update.getMessage().getChatId(), "*You do not have any reminders set yet!*", true);
+			sendAnswer(chatID, "*You do not have any reminders set yet!*", true);
 			return null;
 		}
 
 		return allReminder;
 	}
 
-	private void yesOrNo(Update update) {
-		SendMessage answer = new SendMessage();
-		answer.setChatId(update.getMessage().getChatId());
+	private void yesOrNo(long chatID) {
 		double rdm = Math.random();
-		long chatID = update.getMessage().getChatId();
-
 		if (rdm <= 0.5) {
-			String response = update.getMessage().getFrom().getUserName() + ", my answer is: YES!";
+			String response = "My answer is: YES!";
 			sendAnswer(chatID, response, false);
 			return;
 		}
 
-		String response = update.getMessage().getFrom().getUserName() + " today you get a NO!";
+		String response = "Today you get a NO!";
 		sendAnswer(chatID, response, false);
+	}
+
+	private void unknownCommand(long chatID) {
+		sendAnswer(chatID, "*Unknown command!* Please make sure you typed the command correct.", true);
 	}
 
 	private void sendAnswer(long chatID, String message, boolean markdown) {
