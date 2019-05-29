@@ -55,9 +55,64 @@ The bot currently supports these commands:
 * `/list` - List all of your saved reminders.
 * `/edit <number> <text>` - Edit the text of a reminder. `<number>` is the number of the reminder on the list, `<text>` is the new text for the reminder.
 * `/add <number> <text>` - Add the `<text>` to the end of the reminder with the given `<number>` on the list. You can start the text with `//s` to start with a whitespace. 
+* `/remove <number> <text>` - Remove the `<text>` in the reminder with the `<number>` on the list. You can use  `//n` to also remove line breaks.
 * `/search <text>` - Search for `<text>` in your reminders. Shows all reminders that contain `<text>`.
 * `/delete <number>` - Delete a reminder of your list. The number is the number the reminder has in the list.
 * `/yesorno` - Answers with a yes or a no. Maybe helpful if you want to decide something randomly.
+
+### Examples
+Here is an example using some of the commands above:
+
+<details><summary>Example</summary><p>
+
+Commands are marked with `>>`
+
+Bot replies are marked with `==`
+```
+>>  /reminder Conquer Jerusalem. DEUS VULT!
+==  Reminder saved!
+>>  /reminder Do the dishes
+==  Reminder saved!
+>>  /list
+==  [1 - 27.11.1095, 20:59]
+    Conquer Jerusalem. DEUS VULT!
+    [2 - 01.01.2019, 13:15]
+    Do the dishes
+>>  /edit 1 Survive Siege of Jerusalem
+==  Reminder edited!
+>>  /add 2 //sand do homework
+==  Added text to the reminder!
+>>  /list
+==  [1 - 27.11.1095, 20:59]
+    Survive Siege of Jerusalem
+    [2 - 01.01.2019, 13:15]
+    Do the dishes and do homework
+>>  /remove 2 do the dishes and
+==  Removed text from reminder!
+>>  /search jerusalem
+==  Found these matching reminders:
+    [1 - 27.11.1095, 20:59]
+    Survive Siege of Jerusalem
+>>  /search this is not a reminder I have saved before
+==  No matching reminder found!
+>>  /list
+==  [1 - 27.11.1095, 20:59]
+    Survive Siege of Jerusalem
+    [2 - 01.01.2019, 13:15]
+    do homework
+>>  /delete 1
+==  Reminder removed!
+>>  /list
+==  [1 - 01.01.2019, 13:15]
+    do homework
+>>  /yesorno
+==  Today you get a NO!
+>>  /yesorno
+==  My answer is: YES! 
+```
+
+</p>
+</details>
 
 ### Data
 All data provided to the bot can be found in the `reminder_data` folder. All files have the name of the chat id.

@@ -30,6 +30,7 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 	 * 	U+2753	= red ?
 	 * 	U+27A1 	= right_arrow
 	 *  U+2795  = plus sign
+	 *  U+2796  = minus sign
 	 */
 
 	private String token;
@@ -75,6 +76,9 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 			case "/add":
 				addReminder(chatID, message.getIndex(), message.getMessage());
 				break;
+			case "/remove":
+				removeReminder(chatID, message.getIndex(), message.getMessage());
+				break;
 			case "/list":
 				listAllReminders(chatID);
 				break;
@@ -95,11 +99,11 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 	private Message tokenizeMessage(Update update) {
 		Message message = new Message();
 		String text = update.getMessage().getText();
-		String[] commands = {"/help", "/reminder", "/edit", "/add", "/list", "/search", "/delete", "/yesorno"};
+		String[] commands = {"/help", "/reminder", "/edit", "/add", "/remove", "/list", "/search", "/delete", "/yesorno"};
 
 		// get command
 		for (String command : commands) {
-			if(!text.toLowerCase().startsWith(command.toLowerCase())) {
+			if (!text.toLowerCase().startsWith(command.toLowerCase())) {
 				continue;
 			}
 			message.setCommand(command);
@@ -112,7 +116,7 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 		}
 
 		// remove all spaces before the index or message
-		while(text.charAt(0) == ' ') {
+		while (text.charAt(0) == ' ') {
 			if (text.length() > 1) {
 				text = text.substring(1);
 				continue;
@@ -139,7 +143,7 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 		}
 
 		// remove all spaces before the message
-		while(text.charAt(0) == ' ') {
+		while (text.charAt(0) == ' ') {
 			if (text.length() > 1) {
 				text = text.substring(1);
 				continue;
@@ -171,6 +175,7 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 				"\u2709 */list* - List all saved reminders\n" +
 				"\u270F */edit <number> <message>* - Replace the text of the reminder with that number on the list with a new text\n" +
 				"\u2795 */add <number> <message>* - Add text to the end of the reminder - start with //s to add a space at the beginning\n" +
+				"\u2796 */remove <number> <message>* - Remove text in a specific reminder - use //n for linebreaks\n " +
 				"\u26A0 */delete <number>* - Delete the reminder with that number on the list\n" +
 				"\u2049 */yesorno* - Get a random yes or no";
 
@@ -200,36 +205,20 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 	}
 
 	private void editReminder(long chatID, int index, String message) {
+		if (validate(chatID, index)) return;
+
 		List<Reminder> allReminder = getReminders(chatID);
-		if (allReminder == null) {
-			return;
-		}
-
-		if (index == -1 || index > allReminder.size()) {
-			String response = "*Invalid number!* Please select a number between 1 and " + allReminder.size() + ".";
-			sendAnswer(chatID, response, true);
-			return;
-		}
-
 		allReminder.get(index - 1).setMessage(message);
 		Reminder.writeData(allReminder, Paths.get("reminder_data/" + chatID + ".json"));
 		sendAnswer(chatID, "*Reminder edited!*", true);
 	}
 
 	private void addReminder(long chatID, int index, String message) {
-		List<Reminder> allReminder = getReminders(chatID);
-		if (allReminder == null) {
-			return;
-		}
-
-		if (index == -1 || index > allReminder.size()) {
-			String response = "*Invalid number!* Please select a number between 1 and " + allReminder.size() + ".";
-			sendAnswer(chatID, response, true);
-			return;
-		}
+		if (validate(chatID, index)) return;
 
 		String newMessage;
-		if(message.startsWith("//s")) {
+		List<Reminder> allReminder = getReminders(chatID);
+		if (message.startsWith("//s")) {
 			newMessage = allReminder.get(index - 1).getMessage() + message.replaceFirst("//s", " ");
 		} else {
 			newMessage = allReminder.get(index - 1).getMessage() + message;
@@ -238,6 +227,45 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 		allReminder.get(index - 1).setMessage(newMessage);
 		Reminder.writeData(allReminder, Paths.get("reminder_data/" + chatID + ".json"));
 		sendAnswer(chatID, "*Added text to the reminder!*", true);
+	}
+
+	private void removeReminder(long chatID, int index, String searchText) {
+		if (validate(chatID, index)) return;
+
+		List<Reminder> allReminder = getReminders(chatID);
+		Reminder reminder = allReminder.get(index - 1);
+		String message = reminder.getMessage();
+		if(searchText.contains("//n")) {
+			searchText = searchText.replaceAll("//n", "\n");
+		}
+
+		if(!message.toLowerCase().contains(searchText.toLowerCase())) {
+			sendAnswer(chatID, "*That reminder does not contain the specified text!*", true);
+			return;
+		}
+
+		String newMessage;
+		int firstChar = message.toLowerCase().indexOf(searchText.toLowerCase());
+		int lastChar =  firstChar + searchText.length();
+		newMessage = (message.substring(0, firstChar) + message.substring(lastChar)).trim().replaceAll(" +", " ");
+		reminder.setMessage(newMessage);
+
+		Reminder.writeData(allReminder, Paths.get("reminder_data/" + chatID + ".json"));
+		sendAnswer(chatID, "*Removed text from reminder!*", true);
+	}
+
+	private boolean validate(long chatID, int index) {
+		List<Reminder> allReminder = getReminders(chatID);
+		if (allReminder == null) {
+			return true;
+		}
+
+		if (index == -1 || index > allReminder.size()) {
+			String response = "*Invalid number!* Please select a number between 1 and " + allReminder.size() + ".";
+			sendAnswer(chatID, response, true);
+			return true;
+		}
+		return false;
 	}
 
 	private void listAllReminders(long chatID) {
@@ -267,7 +295,7 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 		StringBuilder strBuilder = new StringBuilder();
 		boolean found = false;
 		for (Reminder reminder : allReminder) {
-			if (!reminder.getMessage().toLowerCase().contains(searchText)) {
+			if (!reminder.getMessage().toLowerCase().contains(searchText.toLowerCase())) {
 				continue;
 			}
 
@@ -287,17 +315,9 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 	}
 
 	private void deleteReminder(long chatID, int index) {
+		if (validate(chatID, index)) return;
+
 		List<Reminder> allReminder = getReminders(chatID);
-		if (allReminder == null) {
-			return;
-		}
-
-		if (index == -1 || index > allReminder.size()) {
-			String response = "*Invalid number!* Please select a number between 1 and " + allReminder.size() + ".";
-			sendAnswer(chatID, response, true);
-			return;
-		}
-
 		allReminder.remove(index - 1);
 		Reminder.writeData(allReminder, Paths.get("reminder_data/" + chatID + ".json"));
 		sendAnswer(chatID, "*Reminder removed!*", true);
