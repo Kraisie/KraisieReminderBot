@@ -138,7 +138,7 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 			}
 
 			if (sbIndex.toString().length() != 0) {
-				message.setIndex(Integer.valueOf(sbIndex.toString()));
+				message.setIndex(Integer.parseInt(sbIndex.toString()));
 			}
 		}
 
@@ -235,18 +235,18 @@ public class KraisieReminderBot extends TelegramLongPollingBot {
 		List<Reminder> allReminder = getReminders(chatID);
 		Reminder reminder = allReminder.get(index - 1);
 		String message = reminder.getMessage();
-		if(searchText.contains("//n")) {
+		if (searchText.contains("//n")) {
 			searchText = searchText.replaceAll("//n", "\n");
 		}
 
-		if(!message.toLowerCase().contains(searchText.toLowerCase())) {
+		if (!message.toLowerCase().contains(searchText.toLowerCase())) {
 			sendAnswer(chatID, "*That reminder does not contain the specified text!*", true);
 			return;
 		}
 
 		String newMessage;
 		int firstChar = message.toLowerCase().indexOf(searchText.toLowerCase());
-		int lastChar =  firstChar + searchText.length();
+		int lastChar = firstChar + searchText.length();
 		newMessage = (message.substring(0, firstChar) + message.substring(lastChar)).trim().replaceAll(" +", " ");
 		reminder.setMessage(newMessage);
 

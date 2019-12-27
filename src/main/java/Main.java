@@ -15,7 +15,7 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 public class Main {
 
 	public static void main(String[] args) {
-		if(!new File("Bot.txt").exists()) {
+		if (!new File("Bot.txt").exists()) {
 			setNewBotData();
 		}
 
@@ -23,7 +23,7 @@ public class Main {
 	}
 
 	private static void setNewBotData() {
-		try{
+		try {
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			System.out.println("Bot Configuration not found! Please add that file or insert the needed data: ");
 			System.out.println("\nBot Token: ");

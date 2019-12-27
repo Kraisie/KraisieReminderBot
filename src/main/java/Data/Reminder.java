@@ -2,6 +2,7 @@ package Data;
 
 import com.google.gson.Gson;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,7 +18,6 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 public class Reminder {
 
 	private LocalDateTime creation;
-//	private LocalDateTime remindDate;
 	private String message;
 
 	public Reminder(LocalDateTime creation, String message) {
@@ -41,11 +41,12 @@ public class Reminder {
 	}
 
 	public static void writeData(List<Reminder> allEntries, Path filePath) {
-		if(!filePath.toFile().exists()) {
-			if(filePath.toFile().getParentFile() != null) {
-				filePath.toFile().getParentFile().mkdirs();
+		File save = filePath.toFile();
+		if (!save.exists()) {
+			if (save.getParentFile() != null) {
+				save.getParentFile().mkdirs();
 			} else {
-				filePath.toFile().mkdir();
+				save.mkdir();
 			}
 		}
 
@@ -80,7 +81,6 @@ public class Reminder {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		Reminder reminder = (Reminder) o;
-		// add remindDate if added l8er
 		return message.equals(reminder.message);
 	}
 
