@@ -1,6 +1,6 @@
 # Simple Telegram Reminder Bot
 
-###[THIS BOT IS DISCONTINUED]
+### [THIS BOT IS DISCONTINUED]
 A simple program to keep all your thoughts and plans or even tasks in a organized Telegram chat instead on Post-Its, diverse Hardware or in a goldfish brain ;)
 
 ### HowTo
